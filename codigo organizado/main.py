@@ -18,6 +18,7 @@ from sklearn import tree
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import mean_absolute_error,mean_absolute_percentage_error,mean_squared_error
 from selection import obtain_results_tables
+from preprocessing import periodic_spline_transformer
 
 
 data = pd.read_excel('Demanda_2015.xlsx', names=['DATE', 'TIME', 'DEMAND'])
@@ -25,6 +26,7 @@ data['DATE-TIME'] = data.apply(lambda r : pd.datetime.combine(r['DATE'],r['TIME'
 data = data.drop(columns=['DATE','TIME'])
 data = data[['DATE-TIME','DEMAND']]
 data = data.set_index('DATE-TIME')
+
 
 print(data.describe())
 print(data.head())

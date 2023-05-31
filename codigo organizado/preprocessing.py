@@ -12,6 +12,7 @@ from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor
 from sklearn.multioutput import RegressorChain
 from sklearn.model_selection import GridSearchCV
+from sklearn.preprocessing import SplineTransformer
 from sklearn import tree
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import mean_absolute_error,mean_absolute_percentage_error,mean_squared_error
@@ -48,14 +49,14 @@ def split_train_test(data,outputname):
     X_cols = [col for col in data.columns if col.startswith('x')]
     X_cols.insert(0, outputname)
     y_cols = [col for col in data.columns if col.startswith('y')]
-    X_train = train[X_cols].values
-    y_train = train[y_cols].values
-    X_test_hyper = testhyper[X_cols].values
-    y_test_hyper = testhyper[y_cols].values
-    X_test_input = testinput[X_cols].values
-    y_test_input = testinput[y_cols].values
-    X_test_final = testfinal[X_cols].values
-    y_test_final = testfinal[y_cols].values
+    X_train = train[X_cols]
+    y_train = train[y_cols]
+    X_test_hyper = testhyper[X_cols]
+    y_test_hyper = testhyper[y_cols]
+    X_test_input = testinput[X_cols]
+    y_test_input = testinput[y_cols]
+    X_test_final = testfinal[X_cols]
+    y_test_final = testfinal[y_cols]
 
     return X_train, y_train, X_test_hyper, y_test_hyper, X_test_input, y_test_input, X_test_final, y_test_final
 
@@ -85,7 +86,25 @@ def build_model(config):
     return model,parameters,lags, steps
 
 
+def add_splines(data,n_splines,period):
+    splines = periodic_spline_transformer(period, n_splines=n_splines).fit_transform(data)
+    splines_df = pd.DataFrame(splines, columns=[f"x_spline_{i}" for i in range(splines.shape[1])], )
+    splines_df = splines_df.set_index(data.index)
+    new_data = pd.concat([data,splines_df], axis = 1)
+    return new_data
 
+
+def periodic_spline_transformer(period, n_splines=None, degree=3):
+    if n_splines is None:
+        n_splines = period
+    n_knots = n_splines + 1  # periodic and include_bias is True
+    return SplineTransformer(
+        degree=degree,
+        n_knots=n_knots,
+        knots=np.linspace(0, period, n_knots).reshape(n_knots, 1),
+        extrapolation="periodic",
+        include_bias=True,
+    )
 
 
 
