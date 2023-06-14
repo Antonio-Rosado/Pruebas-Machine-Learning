@@ -86,6 +86,24 @@ def build_model(config):
     return model,parameters,lags, steps
 
 
+def add_time_features(data):
+    data['hour'] = [data.index[i].hour for i in range(len(data))]
+    data['month'] = [data.index[i].month for i in range(len(data))]
+    data['dayofweek'] = [data.index[i].dayofweek for i in range(len(data))]
+    data['dayofmonth'] = [data.index[i].day for i in range(len(data))]
+    return data
+
+def add_windows(data):
+    load_val = data[['DEMAND']]
+    window_rol = load_val.rolling(12, min_periods=1)
+    data_rolling = pd.concat([window_rol.min(), window_rol.mean(), window_rol.max()], axis=1)
+    data_rolling.columns = ['min_rol', 'mean_rol', 'max_rol']
+    window_ex = load_val.expanding()
+    data_expanding = pd.concat([window_ex.min(), window_ex.mean(), window_ex.max()], axis=1)
+    data_expanding.columns = ['min_ex', 'mean_ex', 'max_ex']
+    new_data = pd.concat([data, data_rolling, data_expanding], axis=1)
+    return new_data
+
 def add_splines(data,n_splines,period):
     splines = periodic_spline_transformer(period, n_splines=n_splines).fit_transform(data)
     splines_df = pd.DataFrame(splines, columns=[f"x_spline_{i}" for i in range(splines.shape[1])], )
@@ -108,7 +126,11 @@ def periodic_spline_transformer(period, n_splines=None, degree=3):
 
 
 
-
+def feature_engineering(data):
+    data = add_splines(data, 12, 144)
+    data = add_time_features(data)
+    data = add_windows(data)
+    return data
 
 
 

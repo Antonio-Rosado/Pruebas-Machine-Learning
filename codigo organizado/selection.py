@@ -24,9 +24,11 @@ from preprocessing import *
 
 
 
-def split_search_test(data,model,outputname, lags, steps, parameters):
+def split_search_test(data,model,outputname, lags, steps, parameters, fe):
 
-    data_splines = add_splines(data,12,144)
+    if(fe==True):
+        data = feature_engineering(data)
+
     formatted_data = window_input_output(lags, steps, data, outputname)
     X_train, y_train, X_test_hyper, y_test_hyper, X_test_input, y_test_input, X_test_final, y_test_final = split_train_test(formatted_data, outputname)
     X_test_final_no_norm = X_test_final
@@ -64,11 +66,11 @@ def split_search_test(data,model,outputname, lags, steps, parameters):
 
 
 
-def find_optimal_input(data,model,outputname, maxlags, steps, parameters):
-    min_mae, params, test_mae, test_mse, test_mape, mae_day, mae_hour = split_search_test(data,model,outputname, 0, steps, parameters)
+def find_optimal_input(data,model,outputname, maxlags, steps, parameters,fe):
+    min_mae, params, test_mae, test_mse, test_mape, mae_day, mae_hour = split_search_test(data,model,outputname, 0, steps, parameters,fe)
     lags = 0
     for i in range(1,maxlags+1):
-        new_mae, new_params, new_test_mae, new_test_mse, new_test_mape, new_mae_day, new_mae_hour = split_search_test(data,model,outputname, i, steps, parameters)
+        new_mae, new_params, new_test_mae, new_test_mse, new_test_mape, new_mae_day, new_mae_hour = split_search_test(data,model,outputname, i, steps, parameters,fe)
         if (new_mae<min_mae):
             min_mae = new_mae
             params = new_params
@@ -87,7 +89,10 @@ def get_mae_by_weekday(test, predictions):
 
 
 
-def obtain_results_tables(data, config, outputname):
+
+
+
+def obtain_results_tables(data, config, outputname,fe, result_name):
     results1 = []
     results2 = []
     for i in range(0,len(config)):
@@ -95,24 +100,33 @@ def obtain_results_tables(data, config, outputname):
         print(model_params)
         model.random_state = 11
         output = outputname
-        lags, best_params, mae,mse,mape, mae_day, mae_hour  = find_optimal_input(data, model, output, maxlags, steps,model_params)
+        lags, best_params, mae,mse,mape, mae_day, mae_hour  = find_optimal_input(data, model, output, maxlags, steps,model_params,fe)
         if (type(model).__name__=='RegressorChain'):
             name = type(model.base_estimator).__name__
         else:
             name = type(model).__name__
         results1.append([name,lags, steps, mae,mse,mape])
         results2.append([name, best_params, lags, steps])
+        for day in mae_day:
+            results1[i].append(day)
+        for hour in mae_hour:
+            results1[i].append(hour)
+        print(results1)
         print(name)
         print(best_params)
         print(mae)
-        print(mae_day)
-        print(mae_hour)
-    df1 = pd.DataFrame(results1, columns=['model', 'lags_used','steps_forecasted','mae','mse','mape'])
+    columns1 = ['model', 'lags_used','steps_forecasted','mae','mse','mape']
+    for i in range(0,7):
+        columns1.append("mae_day_"+str(i))
+    for i in range(0,24):
+        columns1.append("mae_hour_"+str(i))
+    print(columns1)
+    df1 = pd.DataFrame(results1, columns=columns1)
     df2 = pd.DataFrame(results2, columns=['model', 'parameters', 'lags_used', 'steps_forecasted'])
     print(df1)
     print(df2)
-    df1.to_excel("tabla_resultados_fe.xlsx")
-    df2.to_excel("tabla_parametros_fe.xlsx")
+    df1.to_excel(result_name + "_resultados.xlsx")
+    df2.to_excel(result_name + "_parametros.xlsx")
 
 
 
