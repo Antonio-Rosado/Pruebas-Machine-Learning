@@ -16,6 +16,10 @@ from sklearn.preprocessing import SplineTransformer
 from sklearn import tree
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import mean_absolute_error,mean_absolute_percentage_error,mean_squared_error
+from tsfresh import extract_relevant_features
+from tsfresh import extract_features
+from tsfresh.feature_extraction import MinimalFCParameters
+from tsfresh.utilities.dataframe_functions import make_forecasting_frame
 
 
 
@@ -133,6 +137,30 @@ def feature_engineering(data):
     return data
 
 
+def extract_feautres_tsfresh(data,outputname):
+    df_shift, y = make_forecasting_frame(data[outputname], kind=outputname, max_timeshift=12, rolling_direction=1)
+    df_shift.groupby("id").size().agg([np.min, np.max])
+    X = extract_relevant_features(df_shift, y, column_id="id", column_sort="time", column_value="value",
+                                  default_fc_parameters=MinimalFCParameters())
+    return X,y
+
+def get_train_test_tsfresh(X,y,steps):
+    y2 = pd.DataFrame(y)
+    j = 0
+    while j < steps:
+        y2[f'y_{j}'] = y2['value'].shift(-steps - j)
+        j = j + 1
+
+    y2 = y2.dropna(axis=0)
+    y2 = y2[y2.index.isin(X.index)]
+    X = X[X.index.isin(y2.index)]
+    size = int(len(data) * 0.60)
+    X_train, X_test = X[0:size], X[size:len(X)]
+    y_train, y_test = y2[0:size], y2[size:len(y2)]
+    size2 = int(len(X_test) * 0.60)
+    X_test_search, X_test_final = X_test[0:size2], X_test[size2:len(X_test)]
+    y_test_search, y_test_final = y_test[0:size2], y_test[size2:len(y_test)]
+    return X_train,y_train,X_test_search,y_test_search,X_test_final,y_test_final
 
 
 

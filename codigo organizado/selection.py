@@ -33,22 +33,23 @@ def split_search_test(data,model,outputname, lags, steps, parameters, fe):
     X_train, y_train, X_test_hyper, y_test_hyper, X_test_input, y_test_input, X_test_final, y_test_final = split_train_test(formatted_data, outputname)
     X_test_final_no_norm = X_test_final
     test_final_no_norm = y_test_final
-    scaler = preprocessing.MinMaxScaler()
+    scaler_X = preprocessing.MinMaxScaler()
+    scaler_y = preprocessing.MinMaxScaler()
     if ((type(model).__name__)) == 'MLPRegressor':
-        X_train = scaler.fit_transform(X_train)
-        y_train = scaler.fit_transform(y_train)
-        X_test_hyper = scaler.fit_transform(X_test_hyper)
-        y_test_hyper = scaler.fit_transform(y_test_hyper)
-        X_test_input = scaler.fit_transform(X_test_input)
-        X_test_final = scaler.fit_transform(X_test_final)
-        y_test_input = scaler.fit_transform(y_test_input)
-        y_test_final = scaler.fit_transform(y_test_final)
+        X_train = scaler_X.fit_transform(X_train)
+        y_train = scaler_y.fit_transform(y_train)
+        X_test_hyper = scaler_X.transform(X_test_hyper)
+        y_test_hyper = scaler_y.transform(y_test_hyper)
+        X_test_input = scaler_X.transform(X_test_input)
+        X_test_final = scaler_X.transform(X_test_final)
+        y_test_input = scaler_y.transform(y_test_input)
+        y_test_final = scaler_y.transform(y_test_final)
     best_model, best_params = grid_search(X_train, y_train, X_test_hyper, y_test_hyper, model, parameters )
     if ((type(model).__name__)) == 'MLPRegressor':
-        predictions_input = scaler.inverse_transform(best_model.predict(X_test_input))
-        predictions_final = scaler.inverse_transform(best_model.predict(X_test_final))
-        test_final = scaler.inverse_transform(y_test_final)
-        test_input = scaler.inverse_transform(y_test_input)
+        predictions_input = scaler_y.inverse_transform(best_model.predict(X_test_input))
+        predictions_final = scaler_y.inverse_transform(best_model.predict(X_test_final))
+        test_final = scaler_y.inverse_transform(y_test_final)
+        test_input = scaler_y.inverse_transform(y_test_input)
     else:
         predictions_input = best_model.predict(X_test_input)
         predictions_final = best_model.predict(X_test_final)
@@ -137,8 +138,42 @@ def grid_search(X_train, y_train, X_test, y_test, model, parameters):
     return gs.best_estimator_, gs.best_params_
 
 
+def obtain_results_tables_tsfresh(data, config, outputname, result_name):
+
+    X,y = extract_feautres_tsfresh(data, outputname)
+    X_train, y_train, X_test_search, y_test_search, X_test_final, y_test_final = get_train_test_tsfresh(X,y,steps)
+    results1 = []
+    results2 = []
+    for i in range(0, len(config)):
+        model, model_params, maxlags, steps = build_model(config.iloc[i])
+        print(model_params)
+        model.random_state = 11
+        output = outputname
+        best_params, mae, mse, mape = find_best_model_tsfresh(model,X_train,y_train,X_test_search,y_test_search,X_test_final,y_test_final)
+        if (type(model).__name__ == 'RegressorChain'):
+            name = type(model.base_estimator).__name__
+        else:
+            name = type(model).__name__
+        results1.append([name, maxlags, steps, mae, mse, mape])
+        results2.append([name, best_params, maxlags, steps])
+        print(results1)
+        print(name)
+        print(best_params)
+        print(mae)
+    columns1 = ['model', 'lags_used', 'steps_forecasted', 'mae', 'mse', 'mape']
+    df1 = pd.DataFrame(results1, columns=columns1)
+    df2 = pd.DataFrame(results2, columns=['model', 'parameters', 'lags_used', 'steps_forecasted'])
+    print(df1)
+    print(df2)
+    df1.to_excel(result_name + "_resultados_tsfresh.xlsx")
+    df2.to_excel(result_name + "_parametros_tsfresh.xlsx")
 
 
 
 
-
+def find_best_model_tsfresh(model,X_train,y_train,X_test_search,y_test_search,X_test_final,y_test_final):
+    best_model, best_params = grid_search(X_train, y_train, X_test_search, y_test_search, model, model_params)
+    mae = mean_absolute_error(y_test_final, best_model.predict(X_test_final))
+    mse = mean_squared_error(y_test_final, best_model.predict(X_test_final))
+    mape = mean_absolute_percentage_error(y_test_final, best_model.predict(X_test_final))
+    return  best_params,mae,mse, mape
