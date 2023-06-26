@@ -144,7 +144,7 @@ def extract_feautres_tsfresh(data,outputname):
                                   default_fc_parameters=MinimalFCParameters())
     return X,y
 
-def get_train_test_tsfresh(X,y,steps):
+def get_train_test_tsfresh(X,y,steps,size):
     y2 = pd.DataFrame(y)
     j = 0
     while j < steps:
@@ -154,7 +154,8 @@ def get_train_test_tsfresh(X,y,steps):
     y2 = y2.dropna(axis=0)
     y2 = y2[y2.index.isin(X.index)]
     X = X[X.index.isin(y2.index)]
-    size = int(len(data) * 0.60)
+    X = X.set_index(X.index.map(lambda x: x[1]), drop=True)
+    y2 = y2.set_index(y2.index.map(lambda x: x[1]), drop=True)
     X_train, X_test = X[0:size], X[size:len(X)]
     y_train, y_test = y2[0:size], y2[size:len(y2)]
     size2 = int(len(X_test) * 0.60)

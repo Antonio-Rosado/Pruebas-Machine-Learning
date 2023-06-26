@@ -18,8 +18,12 @@ from sklearn import tree
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import mean_absolute_error,mean_absolute_percentage_error,mean_squared_error
 from selection import obtain_results_tables
+from selection import obtain_results_tables_tsfresh
 from preprocessing import periodic_spline_transformer
 from tsfresh import extract_relevant_features
+from tsfresh import extract_features
+from tsfresh.feature_extraction import MinimalFCParameters
+from tsfresh.utilities.dataframe_functions import make_forecasting_frame
 
 if __name__ == '__main__':
     data = pd.read_excel('Demanda_2015.xlsx', names=['DATE', 'TIME', 'DEMAND'])
@@ -51,11 +55,55 @@ if __name__ == '__main__':
     print(data)
     """
 
+    #data['Name'] = 'A'
+    #data2 = data.set_index('Name')
+    '''
+    df_shift, y = make_forecasting_frame(data['DEMAND'], kind='demand', max_timeshift=12, rolling_direction=1)
+    df_shift.groupby("id").size().agg([np.min, np.max])
+    print(y)
+    print(df_shift)
+    #df_shift = df_shift.set_index(id)
+    #df_shift = df_shift.set_index(df_shift.index.map(lambda x: x[1]), drop=True)
+    #print(df_shift)
+    X = extract_relevant_features(df_shift, y, column_id="id", column_sort="time", column_value="value",
+                                  default_fc_parameters=MinimalFCParameters())
+    y2 = pd.DataFrame(y)
+    j = 0
+    while j < 6:
+        y2[f'y_{j}'] = y2['value'].shift(-6 - j)
+        j = j + 1
 
-    obtain_results_tables(data,config,'DEMAND',fe=False, result_name = "no_fe")
-    obtain_results_tables(data, config, 'DEMAND', fe=True, result_name="fe")
+    y2 = y2.dropna(axis=0)
+    y2 = y2[y2.index.isin(X.index)]
+    X = X[X.index.isin(y2.index)]
+    y2 = y2.set_index(y2.index.map(lambda x: x[1]), drop=True)
+    y2.index.name = "id"
+    print(X)
+    print(X.index[0][1])
+    print(y2)
+    print(y2.index[0])
+    print(y2.index.dayofweek[0])
+    print(X.index[0][1].dayofweek)
+    
+    print(X)
+    print(X.index[0])
+    print(X.index.dayofweek[0])
+    size = int(len(data) * 0.60)
+    X_train, X_test = X[0:size], X[size:len(X)]
+    y_train, y_test = y2[0:size], y2[size:len(y2)]
+    model = tree.DecisionTreeRegressor()
+    model.fit(X_train, y_train)
 
+    y_pred = model.predict(X_test)
+    print(y_test)
+    print(y_pred)
+    mae = mean_absolute_error(y_test, y_pred)
+    print(mae)
+'''
+    #obtain_results_tables(data,config,'DEMAND',fe=False, result_name = "no_fe")
+    #obtain_results_tables(data, config, 'DEMAND', fe=True, result_name="fe")
 
+    obtain_results_tables_tsfresh(data, config, 'DEMAND', result_name="tabla")
 
 
 
