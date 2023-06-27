@@ -157,8 +157,8 @@ def obtain_results_tables_tsfresh(data, config, outputname, result_name):
             name = type(model.base_estimator).__name__
         else:
             name = type(model).__name__
-        results1.append([name, maxlags, steps, mae, mse, mape])
-        results2.append([name, best_params, maxlags, steps])
+        results1.append([name, steps, mae, mse, mape])
+        results2.append([name, best_params, steps])
         for day in mae_day:
             results1[i].append(day)
         for hour in mae_hour:
@@ -207,7 +207,7 @@ def find_best_model_tsfresh(model,X_train,y_train,X_test_search,y_test_search,X_
     mae = mean_absolute_error(test_final, predictions_final)
     mse = mean_squared_error(test_final, predictions_final)
     prediction_df = pd.DataFrame(predictions_final, index=X_test_final_no_norm.index)
-    test_df = pd.DataFrame(test_final_no_norm, index=y_test_final.index)
+    test_df = pd.DataFrame(test_final, index=test_final_no_norm.index)
     mae_by_day, mae_by_hour = get_mae_by_weekday(test_df, prediction_df)
     mape = mean_absolute_percentage_error(test_final, predictions_final)
     return  best_params,mae,mse, mape, mae_by_day, mae_by_hour

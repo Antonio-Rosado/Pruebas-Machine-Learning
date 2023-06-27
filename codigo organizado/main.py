@@ -102,7 +102,6 @@ if __name__ == '__main__':
 '''
     #obtain_results_tables(data,config,'DEMAND',fe=False, result_name = "no_fe")
     #obtain_results_tables(data, config, 'DEMAND', fe=True, result_name="fe")
-
     obtain_results_tables_tsfresh(data, config, 'DEMAND', result_name="tabla")
 
 
