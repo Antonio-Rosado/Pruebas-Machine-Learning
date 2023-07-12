@@ -46,23 +46,15 @@ def window_input_output(input_length: int, output_length: int, data: pd.DataFram
 def split_train_test(data,outputname):
     size = int(len(data) * 0.60)
     train, test = data[0:size], data[size:len(data)]
-    size2 = int(len(test) * 0.60)
-    testsearch, testfinal = test[0:size2], test[size2:len(test)]
-    size3 = int(len(testsearch) * 0.50)
-    testhyper, testinput = testsearch[0:size3], testsearch[size3:len(testsearch)]
     X_cols = [col for col in data.columns if col.startswith('x')]
     X_cols.insert(0, outputname)
     y_cols = [col for col in data.columns if col.startswith('y')]
     X_train = train[X_cols]
     y_train = train[y_cols]
-    X_test_hyper = testhyper[X_cols]
-    y_test_hyper = testhyper[y_cols]
-    X_test_input = testinput[X_cols]
-    y_test_input = testinput[y_cols]
-    X_test_final = testfinal[X_cols]
-    y_test_final = testfinal[y_cols]
+    X_test_final = test[X_cols]
+    y_test_final = test[y_cols]
 
-    return X_train, y_train, X_test_hyper, y_test_hyper, X_test_input, y_test_input, X_test_final, y_test_final
+    return X_train, y_train, X_test_final, y_test_final
 
 
 def select_model(model_name):
@@ -85,7 +77,9 @@ def select_model(model_name):
 def build_model(config):
     model = select_model(config[0])
     parameters = ast.literal_eval(config[1])
-    lags = config[2]
+    lags = ast.literal_eval(config[2])
+    print(lags)
+    print(type(lags))
     steps = config[3]
     return model,parameters,lags, steps
 
@@ -137,9 +131,14 @@ def feature_engineering(data):
     return data
 
 
-def extract_feautres_tsfresh(data,outputname):
+def extract_feautres_tsfresh(data,outputname,lags):
     df_shift, y = make_forecasting_frame(data[outputname], kind=outputname, max_timeshift=12, rolling_direction=1)
     df_shift.groupby("id").size().agg([np.min, np.max])
+    print(df_shift)
+    i = 1
+    while i < lags:
+        df_shift[f'x_{i}'] = df_shift['value'].shift(-i)
+        i = i + 1
     X = extract_relevant_features(df_shift, y, column_id="id", column_sort="time", column_value="value",
                                   default_fc_parameters=MinimalFCParameters())
     return X,y
