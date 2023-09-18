@@ -30,126 +30,105 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 from torch import nn
 
-if __name__ == '__main__':
-
-    class SequenceDataset(Dataset):
-        def __init__(self, dataframe, target, features, sequence_length=5):
-            self.features = features
-            self.target = target
-            self.sequence_length = sequence_length
-            self.y = torch.tensor(dataframe[target].values).float()
-            self.X = torch.tensor(dataframe[features].values).float()
-
-        def __len__(self):
-            return self.X.shape[0]
-
-        def __getitem__(self, i):
-            if i >= self.sequence_length - 1:
-                i_start = i - self.sequence_length + 1
-                x = self.X[i_start:(i + 1), :]
-            else:
-                padding = self.X[0].repeat(self.sequence_length - i - 1, 1)
-                x = self.X[0:(i + 1), :]
-                x = torch.cat((padding, x), 0)
-
-            return x, self.y[i]
 
 
-    class ShallowRegressionLSTM(nn.Module):
-        def __init__(self, num_sensors, hidden_units):
-            super().__init__()
-            self.num_sensors = num_sensors  # this is the number of features
-            self.hidden_units = hidden_units
-            self.num_layers = 1
+class SequenceDataset(Dataset):
+    def __init__(self, dataframe, target, features, sequence_length=5):
+        self.features = features
+        self.target = target
+        self.sequence_length = sequence_length
+        self.y = torch.tensor(dataframe[target].values).float()
+        self.X = torch.tensor(dataframe[features].values).float()
 
-            self.lstm = nn.LSTM(
-                input_size=num_sensors,
-                hidden_size=hidden_units,
-                batch_first=True,
-                num_layers=self.num_layers
-            )
+    def __len__(self):
+        return self.X.shape[0]
 
-            self.linear = nn.Linear(in_features=self.hidden_units, out_features=1)
+    def __getitem__(self, i):
+        if i >= self.sequence_length - 1:
+            i_start = i - self.sequence_length + 1
+            x = self.X[i_start:(i + 1), :]
+        else:
+            padding = self.X[0].repeat(self.sequence_length - i - 1, 1)
+            x = self.X[0:(i + 1), :]
+            x = torch.cat((padding, x), 0)
 
-        def forward(self, x):
-            batch_size = x.shape[0]
-            h0 = torch.zeros(self.num_layers, batch_size, self.hidden_units).requires_grad_()
-            c0 = torch.zeros(self.num_layers, batch_size, self.hidden_units).requires_grad_()
-
-            _, (hn, _) = self.lstm(x, (h0, c0))
-            out = self.linear(hn[0]).flatten()  # First dim of Hn is num_layers, which is set to 1 above.
-
-            return out
+        return x, self.y[i]
 
 
-    def train_model(data_loader, model, loss_function, optimizer):
-        num_batches = len(data_loader)
-        total_loss = 0
-        model.train()
+class ShallowRegressionLSTM(nn.Module):
+    def __init__(self, num_sensors, hidden_units):
+        super().__init__()
+        self.num_sensors = num_sensors  # this is the number of features
+        self.hidden_units = hidden_units
+        self.num_layers = 1
 
+        self.lstm = nn.LSTM(
+            input_size=num_sensors,
+            hidden_size=hidden_units,
+            batch_first=True,
+            num_layers=self.num_layers
+        )
+
+        self.linear = nn.Linear(in_features=self.hidden_units, out_features=1)
+
+    def forward(self, x):
+        batch_size = x.shape[0]
+        h0 = torch.zeros(self.num_layers, batch_size, self.hidden_units).requires_grad_()
+        c0 = torch.zeros(self.num_layers, batch_size, self.hidden_units).requires_grad_()
+
+        _, (hn, _) = self.lstm(x, (h0, c0))
+        out = self.linear(hn[0]).flatten()  # First dim of Hn is num_layers, which is set to 1 above.
+
+        return out
+
+
+def train_model(data_loader, model, loss_function, optimizer):
+    num_batches = len(data_loader)
+    total_loss = 0
+    model.train()
+
+    for X, y in data_loader:
+        output = model(X)
+        loss = loss_function(output, y)
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        total_loss += loss.item()
+
+    avg_loss = total_loss / num_batches
+    print(f"Train loss: {avg_loss}")
+
+
+def test_model(data_loader, model, loss_function):
+
+    num_batches = len(data_loader)
+    total_loss = 0
+
+    model.eval()
+    with torch.no_grad():
         for X, y in data_loader:
             output = model(X)
-            loss = loss_function(output, y)
+            total_loss += loss_function(output, y).item()
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-            total_loss += loss.item()
-
-        avg_loss = total_loss / num_batches
-        print(f"Train loss: {avg_loss}")
+    avg_loss = total_loss / num_batches
+    print(f"Test loss: {avg_loss}")
 
 
-    def test_model(data_loader, model, loss_function):
+def predict(data_loader, model):
 
-        num_batches = len(data_loader)
-        total_loss = 0
+    output = torch.tensor([])
+    model.eval()
+    with torch.no_grad():
+        for X, _ in data_loader:
+            y_star = model(X)
+            output = torch.cat((output, y_star), 0)
 
-        model.eval()
-        with torch.no_grad():
-            for X, y in data_loader:
-                output = model(X)
-                total_loss += loss_function(output, y).item()
-
-        avg_loss = total_loss / num_batches
-        print(f"Test loss: {avg_loss}")
+    return output
 
 
-    def predict(data_loader, model):
-
-        output = torch.tensor([])
-        model.eval()
-        with torch.no_grad():
-            for X, _ in data_loader:
-                y_star = model(X)
-                output = torch.cat((output, y_star), 0)
-
-        return output
-
-
-    data = pd.read_excel('datasets/Demanda_2015.xlsx', names=['DATE', 'TIME', 'DEMAND'])
-    data['DATE-TIME'] = data.apply(lambda r : pd.datetime.combine(r['DATE'],r['TIME']),1)
-    data = data.drop(columns=['DATE','TIME'])
-    data = data[['DATE-TIME','DEMAND']]
-
-    data = data.set_index('DATE-TIME')
-
-    data['DEMAND2'] = data ['DEMAND']
-
-    forecast_lead = 30
-    target = f"{'DEMAND'}_lead{forecast_lead}"
-    features = list(data.columns.difference(['DEMAND']))
-    print(features)
-
-    data[target] = data['DEMAND'].shift(-forecast_lead)
-    data = data.iloc[:-forecast_lead]
-
-    print(data.describe())
-    print(data.head())
-    print(data.tail())
-
-    test_start = "2015-10-10 00:00:00"
+def pytorch_lstm(data,forecast_lead,target,features,test_start):
 
     df_train = data.loc[:test_start].copy()
     df_test = data.loc[test_start:].copy()
@@ -191,7 +170,7 @@ if __name__ == '__main__':
     test_model(test_loader, model, loss_function)
     print()
 
-    for ix_epoch in range(2):
+    for ix_epoch in range(50):
         print(f"Epoch {ix_epoch}\n---------")
         train_model(train_loader, model, loss_function, optimizer=optimizer)
         test_model(test_loader, model, loss_function)
@@ -207,3 +186,11 @@ if __name__ == '__main__':
 
     print(df_out)
 
+# Adaptar código para cualquier dataset
+# Aumentar épocas y analizar resultados
+
+
+#Surveys tranfer learning
+#Surveys series temporales / Estado del arte
+#Código
+#Artículo
