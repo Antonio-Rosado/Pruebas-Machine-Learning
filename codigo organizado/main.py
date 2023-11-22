@@ -20,7 +20,7 @@ from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import mean_absolute_error,mean_absolute_percentage_error,mean_squared_error
 from selection import obtain_results_tables
 from selection import obtain_results_tables_tsfresh
-from pytorch import pytorch_lstm
+from pytorch import pytorch_lstm, pytorch_cnn, pytorch_transformer
 from preprocessing import periodic_spline_transformer
 from tsfresh import extract_relevant_features
 from tsfresh import extract_features
@@ -84,7 +84,8 @@ if __name__ == '__main__':
     #obtain_results_tables(data,config,'pm2p5',fe=False, result_name = "no_fe",hour_week_data = True)
     #obtain_results_tables(data, config, 'pm2p5', fe=True, result_name="fe",hour_week_data = True)
     #obtain_results_tables_tsfresh(data, config, 'pm2p5', result_name="tabla",lags=15,hour_week_data = True)
+    pytorch_cnn(data, forecast_lead, target, features, test_start)
     pytorch_lstm(data, forecast_lead, target, features, test_start)
-
+    pytorch_transformer(data, forecast_lead, target, features, test_start)
 
 
