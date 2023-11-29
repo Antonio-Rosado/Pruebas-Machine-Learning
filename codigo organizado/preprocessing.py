@@ -91,8 +91,8 @@ def add_time_features(data):
     data['dayofmonth'] = [data.index[i].day for i in range(len(data))]
     return data
 
-def add_windows(data):
-    load_val = data[['DEMAND']]
+def add_windows(data,outputname):
+    load_val = data[[outputname]]
     window_rol = load_val.rolling(12, min_periods=1)
     data_rolling = pd.concat([window_rol.min(), window_rol.mean(), window_rol.max()], axis=1)
     data_rolling.columns = ['min_rol', 'mean_rol', 'max_rol']
@@ -124,10 +124,10 @@ def periodic_spline_transformer(period, n_splines=None, degree=3):
 
 
 
-def feature_engineering(data):
+def feature_engineering(data,outputname):
     data = add_splines(data, 12, 144)
     data = add_time_features(data)
-    data = add_windows(data)
+    data = add_windows(data,outputname)
     return data
 
 

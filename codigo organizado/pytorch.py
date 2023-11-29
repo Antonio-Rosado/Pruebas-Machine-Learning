@@ -20,8 +20,6 @@ from sklearn.model_selection import GridSearchCV
 from sklearn import tree
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import mean_absolute_error,mean_absolute_percentage_error,mean_squared_error
-from selection import obtain_results_tables
-from selection import obtain_results_tables_tsfresh
 from preprocessing import periodic_spline_transformer
 from tsfresh import extract_relevant_features
 from tsfresh import extract_features
@@ -278,6 +276,8 @@ def pytorch_cnn(data,forecast_lead,target,features,test_start):
 
     print(mae)
 
+    return mse, mae
+
 def pytorch_lstm(data,forecast_lead,target,features,test_start):
     df_train = data.loc[:test_start].copy()
     df_test = data.loc[test_start:].copy()
@@ -356,6 +356,8 @@ def pytorch_lstm(data,forecast_lead,target,features,test_start):
     print(mse)
 
     print(mae)
+
+    return mse, mae
 
 
 def pytorch_transformer(data,forecast_lead,target,features,test_start):
@@ -446,3 +448,5 @@ def pytorch_transformer(data,forecast_lead,target,features,test_start):
     print(mse)
 
     print(mae)
+
+    return mse, mae

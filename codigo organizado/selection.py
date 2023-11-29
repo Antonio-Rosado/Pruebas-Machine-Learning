@@ -16,6 +16,7 @@ from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor
 from sklearn.multioutput import RegressorChain
 from sklearn.model_selection import GridSearchCV
 from sklearn import tree
+from pytorch import pytorch_lstm, pytorch_cnn, pytorch_transformer
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import mean_absolute_error,mean_absolute_percentage_error,mean_squared_error
 from preprocessing import *
@@ -92,20 +93,21 @@ def get_mae_by_weekday(test, predictions):
 
 
 
-def obtain_results_tables(data, config, outputname,fe, result_name):
+def obtain_results_tables(data, config, outputname,fe, result_name,hour_week_data):
     results1 = []
     data = data[:-12]
     for i in range(0,len(config)):
         model,model_params,maxlags,steps = build_model(config.iloc[i])
         model.random_state = 11
         output = outputname
-        results1= fill_results_table( model, model_params, data, outputname, maxlags, steps, fe, results1)
+        results1= fill_results_table( model, model_params, data, outputname, maxlags, steps, fe, results1,hour_week_data)
 
     columns1 = ['model', 'lags_used', 'parameters', 'steps_forecasted','mae','mse','mape']
-    for i in range(0,7):
-        columns1.append("mae_day_"+str(i))
-    for i in range(0,24):
-        columns1.append("mae_hour_"+str(i))
+    if (hour_week_data):
+        for i in range(0, 7):
+            columns1.append("mae_day_" + str(i))
+        for i in range(0,24):
+            columns1.append("mae_hour_"+str(i))
     df1 = pd.DataFrame(results1, columns=columns1)
     #df1 = df1.pivot(index=['model','lags_used','parameters','steps_forecasted'], columns=columns1[4,:])
     df1.set_index(['model','steps_forecasted','lags_used','parameters'], inplace=True)
@@ -121,18 +123,18 @@ def grid_search(X_train, y_train, X_test, y_test, model, parameters):
     return gs.best_estimator_, gs.best_params_
 
 
-def fill_results_table( model, parameters, data, outputname, lags, steps, fe, results1):
+def fill_results_table( model, parameters, data, outputname, lags, steps, fe, results1,hour_week_data):
     if (fe == True):
-        data = feature_engineering(data)
+        data = feature_engineering(data,outputname)
     for lag in lags:
         formatted_data = window_input_output(lag, steps, data, outputname)
         X_train, y_train, X_test_final, y_test_final = split_train_test(formatted_data, outputname)
-        results1 = grid_search_full(model,X_train,y_train,X_test_final,y_test_final, parameters, results1,lag,steps)
+        results1 = grid_search_full(model,X_train,y_train,X_test_final,y_test_final, parameters, results1,lag,steps,hour_week_data)
 
     return results1
 
 
-def obtain_results_tables_tsfresh(data, config, outputname, result_name,lags):
+def obtain_results_tables_tsfresh(data, config, outputname, result_name,lags,hour_week_data):
 
     X,y = extract_feautres_tsfresh(data, outputname,lags)
     size = int(len(data) * 0.60)
@@ -144,13 +146,14 @@ def obtain_results_tables_tsfresh(data, config, outputname, result_name,lags):
         print(model_params)
         model.random_state = 11
         output = outputname
-        results1 = grid_search_full(model,X_train,y_train,X_test_final,y_test_final,model_params,results1,lags,steps)
+        results1 = grid_search_full(model,X_train,y_train,X_test_final,y_test_final,model_params,results1,lags,steps,hour_week_data)
 
     columns1 = ['model', 'lags_used', 'parameters', 'steps_forecasted','mae','mse','mape']
-    for i in range(0,7):
-        columns1.append("mae_day_"+str(i))
-    for i in range(0,24):
-        columns1.append("mae_hour_"+str(i))
+    if (hour_week_data):
+        for i in range(0,7):
+            columns1.append("mae_day_"+str(i))
+        for i in range(0,24):
+            columns1.append("mae_hour_"+str(i))
     df1 = pd.DataFrame(results1, columns=columns1)
     df1.set_index(['model', 'steps_forecasted', 'lags_used', 'parameters'], inplace=True)
     print(df1)
@@ -160,7 +163,7 @@ def obtain_results_tables_tsfresh(data, config, outputname, result_name,lags):
 
 
 
-def grid_search_full(model,X_train,y_train,X_test_final,y_test_final, model_params, results1,lags,steps):
+def grid_search_full(model,X_train,y_train,X_test_final,y_test_final, model_params, results1,lags,steps,hour_week_data):
     print(X_test_final)
     print(y_test_final)
     X_test_final_no_norm = X_test_final
@@ -187,7 +190,8 @@ def grid_search_full(model,X_train,y_train,X_test_final,y_test_final, model_para
         mse = mean_squared_error(test_final, predictions_final)
         prediction_df = pd.DataFrame(predictions_final, index=X_test_final_no_norm.index)
         test_df = pd.DataFrame(test_final, index=test_final_no_norm.index)
-        mae_day, mae_hour = get_mae_by_weekday(test_df, prediction_df)
+        if(hour_week_data):
+            mae_day, mae_hour = get_mae_by_weekday(test_df, prediction_df)
         mape = mean_absolute_percentage_error(test_final, predictions_final)
         params = d
         lags_used = lags
@@ -196,12 +200,45 @@ def grid_search_full(model,X_train,y_train,X_test_final,y_test_final, model_para
         else:
             name = type(model).__name__
         results1.append([name, lags_used, str(params), steps, mae, mse, mape])
-        for day in mae_day:
-            results1[-1].append(day)
-        for hour in mae_hour:
-            results1[-1].append(hour)
+        if(hour_week_data):
+            for day in mae_day:
+                results1[-1].append(day)
+            for hour in mae_hour:
+                results1[-1].append(hour)
         print(results1)
         print(name)
         print(params)
         print(mae)
     return  results1
+
+
+def mse_basic(data,outputname,lags,steps,modelname):
+    formatted_data = window_input_output(lags, steps, data, outputname)
+    X_train, y_train, X_test_final, y_test_final = split_train_test(formatted_data,outputname)
+    model = select_model(modelname)
+    model.fit(X_train,y_train)
+    predictions_final = model.predict(X_test_final)
+    mse = mean_squared_error(y_test_final,predictions_final)
+    mae = mean_absolute_error(y_test_final, predictions_final)
+    print(mse)
+    print(mae)
+    return mse, mae
+
+def print_mse_mae_all(data, forecast_lead, target, features, test_start, outputname, lags, steps):
+
+    mse1,mae1 = pytorch_cnn(data, forecast_lead, target, features, test_start)
+    mse2,mae2 = pytorch_lstm(data, forecast_lead, target, features, test_start)
+    mse3,mae3 = pytorch_transformer(data, forecast_lead, target, features, test_start)
+    mse4,mae4 = mse_basic(data, outputname, lags, steps, 'xgb')
+    mse5,mae5 = mse_basic(data, outputname, lags, steps, 'forest')
+
+    print('CNN:')
+    print('mae: ' + str(mae1) + ' mse: ' + str(mse1) )
+    print('LSTM:')
+    print('mae: ' + str(mae2)  + ' mse: ' + str(mse2) )
+    print('Transformer:')
+    print('mae: ' + str(mae3)  + ' mse: ' + str(mse3) )
+    print('XGB:')
+    print('mae: ' + str(mae4)  + ' mse: ' + str(mse4) )
+    print('RandomForest:')
+    print('mae: ' + str(mae5)  + ' mse: ' + str(mse5) )
