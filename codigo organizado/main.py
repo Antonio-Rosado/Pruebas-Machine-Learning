@@ -20,8 +20,7 @@ from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import mean_absolute_error,mean_absolute_percentage_error,mean_squared_error
 from selection import obtain_results_tables
 from selection import obtain_results_tables_tsfresh
-from selection import print_mse_mae_all
-from pytorch import pytorch_lstm, pytorch_cnn, pytorch_transformer
+from selection import get_mse_mae_all
 from preprocessing import periodic_spline_transformer
 from tsfresh import extract_relevant_features
 from tsfresh import extract_features
@@ -90,6 +89,7 @@ if __name__ == '__main__':
     #pytorch_transformer(data, forecast_lead, target, features, test_start)
     #mse_basic(data, 'DEMAND', 6, 6, 'xgb')
     #mse_basic(data, 'DEMAND', 6, 6, 'forest')
-    print_mse_mae_all(data, forecast_lead, target, features, test_start, 'DEMAND', 6, 6)
+    results = []
+    get_mse_mae_all(data, forecast_lead, target, features, test_start, 'DEMAND', 6, 6, results)
 
 

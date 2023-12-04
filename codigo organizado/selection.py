@@ -16,7 +16,7 @@ from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor
 from sklearn.multioutput import RegressorChain
 from sklearn.model_selection import GridSearchCV
 from sklearn import tree
-from pytorch import pytorch_lstm, pytorch_cnn, pytorch_transformer
+from pytorch import pytorch_neural_network
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import mean_absolute_error,mean_absolute_percentage_error,mean_squared_error
 from preprocessing import *
@@ -224,11 +224,11 @@ def mse_basic(data,outputname,lags,steps,modelname):
     print(mae)
     return mse, mae
 
-def print_mse_mae_all(data, forecast_lead, target, features, test_start, outputname, lags, steps):
+def get_mse_mae_all(data, forecast_lead, target, features, test_start, outputname, lags, steps, results):
 
-    mse1,mae1 = pytorch_cnn(data, forecast_lead, target, features, test_start)
-    mse2,mae2 = pytorch_lstm(data, forecast_lead, target, features, test_start)
-    mse3,mae3 = pytorch_transformer(data, forecast_lead, target, features, test_start)
+    mse1,mae1 = pytorch_neural_network(data, forecast_lead, target, features, test_start, outputname, 1, 3, 'cnn')
+    mse2,mae2 = pytorch_neural_network(data, forecast_lead, target, features, test_start, outputname, 4, 30, 'lstm')
+    mse3,mae3 = pytorch_neural_network(data, forecast_lead, target, features, test_start, outputname, 1, 6, 'transformer')
     mse4,mae4 = mse_basic(data, outputname, lags, steps, 'xgb')
     mse5,mae5 = mse_basic(data, outputname, lags, steps, 'forest')
 
@@ -242,3 +242,35 @@ def print_mse_mae_all(data, forecast_lead, target, features, test_start, outputn
     print('mae: ' + str(mae4)  + ' mse: ' + str(mse4) )
     print('RandomForest:')
     print('mae: ' + str(mae5)  + ' mse: ' + str(mse5) )
+
+
+    results.append(([outputname, mse1, mae1, mse2, mae2, mse3, mae3, mse4, mae4, mse5, mae5]))
+    return results
+
+
+def get_table_pytorch_plus (dataset, test_start, filename):
+
+    results = []
+    for i in range(0, len(dataset.columns)):
+        data = dataset.iloc[:, i]
+        outputname = data.name
+        data = data.to_frame()
+        print(data.to_string())
+        data[outputname + '2'] = data[outputname]
+
+        forecast_lead = 30
+        target = f"{outputname}_lead{forecast_lead}"
+        features = list(data.columns.difference([outputname]))
+        print(features)
+
+        data[target] = data[outputname].shift(-forecast_lead)
+        data = data.iloc[:-forecast_lead]
+        test_start = "2015-04-04"
+
+        results = get_mse_mae_all(data, forecast_lead, target, features, test_start, outputname, 6, 6, results)
+
+    columns = ['time_series', 'CNN_mse', 'CNN_mae', 'LSTM_mse','LSTM_mae','Transformer_mse','Transformer_mae','XGB_mse','XGB_mae','RandomForest_mse','RandomForest_mae']
+    df1 = pd.DataFrame(results, columns=columns)
+    df1.set_index(['time_series'], inplace=True)
+    print(df1)
+    df1.to_excel(filename + ".xlsx")

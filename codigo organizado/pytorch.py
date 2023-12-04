@@ -198,169 +198,8 @@ def predict(data_loader, model):
     return output
 
 
-def pytorch_cnn(data,forecast_lead,target,features,test_start):
 
-    df_train = data.loc[:test_start].copy()
-    df_test = data.loc[test_start:].copy()
-
-    target_mean = df_train[target].mean()
-    target_stdev = df_train[target].std()
-
-    for c in df_train.columns:
-        mean = df_train[c].mean()
-        stdev = df_train[c].std()
-
-        df_train[c] = (df_train[c] - mean) / stdev
-        df_test[c] = (df_test[c] - mean) / stdev
-
-    torch.manual_seed(101)
-
-    batch_size = 1
-    sequence_length = 3
-
-    train_dataset = SequenceDataset(
-        df_train,
-        target=target,
-        features=features,
-        sequence_length=sequence_length
-    )
-    test_dataset = SequenceDataset(
-        df_test,
-        target=target,
-        features=features,
-        sequence_length=sequence_length
-    )
-
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
-    X, y = next(iter(train_loader))
-
-    print("Features shape:", X.shape)
-    print("Target shape:", y.shape)
-
-    learning_rate = 5e-5
-
-    model = CNN_ForecastNet()
-    loss_function = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-
-    print("Untrained test\n--------")
-    test_model(test_loader, model, loss_function)
-    print()
-
-    for ix_epoch in range(50):
-        print(f"Epoch {ix_epoch}\n---------")
-        train_model(train_loader, model, loss_function, optimizer=optimizer)
-        test_model(test_loader, model, loss_function)
-        print()
-
-    train_eval_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
-
-    ystar_col = "Model forecast"
-    df_train[ystar_col] = predict(train_eval_loader, model).numpy()
-    df_test[ystar_col] = predict(test_loader, model).numpy()
-
-    df_out = pd.concat((df_train, df_test))[[target, ystar_col]]
-
-    for c in df_out.columns:
-        df_out[c] = df_out[c] * target_stdev + target_mean
-
-    mse = mean_squared_error(df_out['DEMAND_lead30'],df_out['Model forecast'])
-
-    mae= mean_absolute_error(df_out['DEMAND_lead30'], df_out['Model forecast'])
-
-    print(df_out)
-
-    print(mse)
-
-    print(mae)
-
-    return mse, mae
-
-def pytorch_lstm(data,forecast_lead,target,features,test_start):
-    df_train = data.loc[:test_start].copy()
-    df_test = data.loc[test_start:].copy()
-
-    target_mean = df_train[target].mean()
-    target_stdev = df_train[target].std()
-
-    for c in df_train.columns:
-        mean = df_train[c].mean()
-        stdev = df_train[c].std()
-
-        df_train[c] = (df_train[c] - mean) / stdev
-        df_test[c] = (df_test[c] - mean) / stdev
-
-    torch.manual_seed(101)
-
-    batch_size = 4
-    sequence_length = 30
-
-    train_dataset = SequenceDataset(
-        df_train,
-        target=target,
-        features=features,
-        sequence_length=sequence_length
-    )
-    test_dataset = SequenceDataset(
-        df_test,
-        target=target,
-        features=features,
-        sequence_length=sequence_length
-    )
-
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
-    X, y = next(iter(train_loader))
-
-    print("Features shape:", X.shape)
-    print("Target shape:", y.shape)
-
-    learning_rate = 5e-5
-    num_hidden_units = 32
-
-    model = ShallowRegressionLSTM(num_sensors=len(features), hidden_units=num_hidden_units)
-    loss_function = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-
-    print("Untrained test\n--------")
-    test_model(test_loader, model, loss_function)
-    print()
-
-    for ix_epoch in range(2):
-        print(f"Epoch {ix_epoch}\n---------")
-        train_model(train_loader, model, loss_function, optimizer=optimizer)
-        test_model(test_loader, model, loss_function)
-        print()
-
-    train_eval_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
-
-    ystar_col = "Model forecast"
-    df_train[ystar_col] = predict(train_eval_loader, model).numpy()
-    df_test[ystar_col] = predict(test_loader, model).numpy()
-
-
-    df_out = pd.concat((df_train, df_test))[[target, ystar_col]]
-
-    for c in df_out.columns:
-        df_out[c] = df_out[c] * target_stdev + target_mean
-
-    mse = mean_squared_error(df_out['DEMAND_lead30'], df_out['Model forecast'])
-
-    mae = mean_absolute_error(df_out['DEMAND_lead30'], df_out['Model forecast'])
-
-    print(df_out)
-
-    print(mse)
-
-    print(mae)
-
-    return mse, mae
-
-
-def pytorch_transformer(data,forecast_lead,target,features,test_start):
+def pytorch_neural_network(data,forecast_lead,target,features,test_start, outputname, batch_size, sequence_length, n_type):
     df_train = data.loc[:test_start].copy()
     df_test = data.loc[test_start:].copy()
     print(df_train)
@@ -378,8 +217,8 @@ def pytorch_transformer(data,forecast_lead,target,features,test_start):
 
     torch.manual_seed(101)
 
-    batch_size = 1
-    sequence_length = 6
+    batch_size = batch_size
+    sequence_length = sequence_length
 
     train_dataset = SequenceDataset(
         df_train,
@@ -405,14 +244,7 @@ def pytorch_transformer(data,forecast_lead,target,features,test_start):
     learning_rate = 5e-5
 
 
-
-    ntokens = 1
-    emsize = 200
-    d_hid = 200
-    nlayers = 2
-    nhead = 2
-    dropout = 0.2
-    model = Transformer(ntokens, emsize, nhead, d_hid, nlayers, dropout)
+    model = select_network(n_type, features)
     loss_function = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -439,9 +271,9 @@ def pytorch_transformer(data,forecast_lead,target,features,test_start):
     for c in df_out.columns:
         df_out[c] = df_out[c] * target_stdev + target_mean
 
-    mse = mean_squared_error(df_out['DEMAND_lead30'], df_out['Model forecast'])
+    mse = mean_squared_error(df_out[outputname + '_lead30'], df_out['Model forecast'])
 
-    mae = mean_absolute_error(df_out['DEMAND_lead30'], df_out['Model forecast'])
+    mae = mean_absolute_error(df_out[outputname + '_lead30'], df_out['Model forecast'])
 
     print(df_out)
 
@@ -450,3 +282,19 @@ def pytorch_transformer(data,forecast_lead,target,features,test_start):
     print(mae)
 
     return mse, mae
+
+def select_network(nn_type, features):
+    if (nn_type == 'transformer'):
+        ntokens = 1
+        emsize = 200
+        d_hid = 200
+        nlayers = 2
+        nhead = 2
+        dropout = 0.2
+        model = Transformer(ntokens, emsize, nhead, d_hid, nlayers, dropout)
+    if (nn_type == 'lstm'):
+        num_hidden_units = 32
+        model = ShallowRegressionLSTM(num_sensors=len(features), hidden_units=num_hidden_units)
+    if(nn_type == 'cnn'):
+        model = CNN_ForecastNet()
+    return model
