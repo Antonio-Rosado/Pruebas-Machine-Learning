@@ -1,34 +1,10 @@
-import pandas as pd
-#arima, autoarima, decision tree, random forest, adaboost, gaussian process, neural network
-#tabla modelo-parámetros-mae-entrada-salida
-import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
-import ast
 import math
-import xgboost as xgb
-import lightgbm as lgb
 import torch
-from itertools import product
-from sklearn import preprocessing
-from sklearn.neural_network import MLPRegressor
-from sklearn.linear_model import LinearRegression
-from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor
-from sklearn.multioutput import RegressorChain
-from sklearn.model_selection import GridSearchCV
-from sklearn import tree
-from sklearn.model_selection import TimeSeriesSplit
-from sklearn.metrics import mean_absolute_error,mean_absolute_percentage_error,mean_squared_error
-from preprocessing import periodic_spline_transformer
-from tsfresh import extract_relevant_features
-from tsfresh import extract_features
-from tsfresh.feature_extraction import MinimalFCParameters
-from tsfresh.utilities.dataframe_functions import make_forecasting_frame
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 from torch import nn, Tensor
 from torch.nn import TransformerEncoder, TransformerEncoderLayer
+from preprocessing import *
 
 
 
@@ -298,3 +274,39 @@ def select_network(nn_type, features):
     if(nn_type == 'cnn'):
         model = CNN_ForecastNet()
     return model
+
+
+def mse_basic(data,outputname,lags,steps,modelname):
+    formatted_data = window_input_output(lags, steps, data, outputname)
+    X_train, y_train, X_test_final, y_test_final = split_train_test(formatted_data,outputname)
+    model = select_model(modelname)
+    model.fit(X_train,y_train)
+    predictions_final = model.predict(X_test_final)
+    mse = mean_squared_error(y_test_final,predictions_final)
+    mae = mean_absolute_error(y_test_final, predictions_final)
+    print(mse)
+    print(mae)
+    return mse, mae
+
+def get_mse_mae_all(data, forecast_lead, target, features, test_start, outputname, lags, steps, results):
+
+    mse1,mae1 = pytorch_neural_network(data, forecast_lead, target, features, test_start, outputname, 1, 3, 'cnn')
+    mse2,mae2 = pytorch_neural_network(data, forecast_lead, target, features, test_start, outputname, 4, 30, 'lstm')
+    mse3,mae3 = pytorch_neural_network(data, forecast_lead, target, features, test_start, outputname, 1, 6, 'transformer')
+    mse4,mae4 = mse_basic(data, outputname, lags, steps, 'xgb')
+    mse5,mae5 = mse_basic(data, outputname, lags, steps, 'forest')
+
+    print('CNN:')
+    print('mae: ' + str(mae1) + ' mse: ' + str(mse1) )
+    print('LSTM:')
+    print('mae: ' + str(mae2)  + ' mse: ' + str(mse2) )
+    print('Transformer:')
+    print('mae: ' + str(mae3)  + ' mse: ' + str(mse3) )
+    print('XGB:')
+    print('mae: ' + str(mae4)  + ' mse: ' + str(mse4) )
+    print('RandomForest:')
+    print('mae: ' + str(mae5)  + ' mse: ' + str(mse5) )
+
+
+    results.append(([outputname, mse1, mae1, mse2, mae2, mse3, mae3, mse4, mae4, mse5, mae5]))
+    return results
