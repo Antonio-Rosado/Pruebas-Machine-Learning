@@ -7,6 +7,7 @@ import xgboost as xgb
 import lightgbm as lgb
 from sklearn import preprocessing
 from sklearn.neural_network import MLPRegressor
+from ydata_profiling import ProfileReport
 from sklearn.linear_model import LinearRegression
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor
@@ -56,6 +57,16 @@ def split_train_test(data,outputname):
 
     return X_train, y_train, X_test_final, y_test_final
 
+def split_train_test_at_point(data,point, features, target):
+    train = data.loc[:point].copy()
+    test = data.loc[point:].copy()
+    X_train = train[features]
+    y_train = train[target]
+    X_test_final = test[features]
+    y_test_final = test[target]
+
+    return X_train, y_train, X_test_final, y_test_final
+
 
 def select_model(model_name):
     if (model_name=='tree'):
@@ -85,7 +96,7 @@ def build_model(config):
 
 
 def add_time_features(data):
-    data['hour'] = [data.index[i].hour for i in range(len(data))]
+    #data['hour'] = [data.index[i].hour for i in range(len(data))]
     data['month'] = [data.index[i].month for i in range(len(data))]
     data['dayofweek'] = [data.index[i].dayofweek for i in range(len(data))]
     data['dayofmonth'] = [data.index[i].day for i in range(len(data))]
@@ -161,6 +172,15 @@ def get_train_test_tsfresh(X,y,steps,size):
     X_test_search, X_test_final = X_test[0:size2], X_test[size2:len(X_test)]
     y_test_search, y_test_final = y_test[0:size2], y_test[size2:len(y_test)]
     return X_train,y_train,X_test_search,y_test_search,X_test_final,y_test_final
+
+
+
+
+def select_data_fragment(df, start, end):
+
+    new_df = df.iloc[:, start:end]
+    return new_df;
+
 
 
 

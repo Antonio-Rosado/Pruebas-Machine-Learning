@@ -1,10 +1,32 @@
 import pandas as pd
+import seaborn as sns
+import matplotlib
+import matplotlib.pyplot as plt
+from ydata_profiling import ProfileReport
+from ydata_profiling.utils.cache import cache_file
+from ydata_profiling.visualisation.plot import timeseries_heatmap
 from table_creation import get_table_pytorch_plus
+from preprocessing import select_data_fragment
 
 
 sell_prices_df = pd.read_csv('datasets/m5/sell_prices.csv')
 train_sales_df = pd.read_csv('datasets/m5/sales_train_validation.csv')
 calendar_df = pd.read_csv('datasets/m5/calendar.csv')
+
+
+
+for col in ['weekday','month','year','event_name_1','event_name_2','event_type_1','event_type_2']:
+    sns.countplot(calendar_df, x=col)
+    plt.title(col)
+    plt.xticks(rotation=45)
+    plt.show()
+
+for col in ['store_id','state_id','cat_id','dept_id']:
+    sns.countplot(train_sales_df, x=col)
+    plt.title(col)
+    plt.xticks(rotation=45)
+    plt.show()
+
 
 
 d_cols = [c for c in train_sales_df.columns if 'd_' in c]
@@ -22,13 +44,22 @@ train_sales_cal_df_total = train_sales_cal_df
 train_sales_cal_df_total['total_sales'] = train_sales_cal_df.sum(axis=1)
 train_sales_cal_df_total = train_sales_cal_df_total[['total_sales']]
 train_sales_cal_df_total = train_sales_cal_df_total.reset_index()
-train_sales_cal_df_total = train_sales_cal_df_total.set_index('date')
-print(train_sales_cal_df_total)
-print(train_sales_cal_df.iloc[:,30490])
+#train_sales_cal_df_total = train_sales_cal_df_total.set_index('date')
+#print(train_sales_cal_df_total)
+#print(train_sales_cal_df.iloc[:,30490])
+df = select_data_fragment(train_sales_cal_df,0,3)
+for col in df.columns:
+    df[col].plot()
+    plt.title(col)
+    plt.show()
+print(df)
+
+
 dataset = train_sales_cal_df
-test_start = "2015-04-04"
+test_start = "2014-04-04"
+test_transfer = "2016-04-04"
 filename = 'resultados_m5_2'
-get_table_pytorch_plus (dataset, test_start, filename)
+get_table_pytorch_plus (df, test_start, test_transfer,filename)
 
 
 

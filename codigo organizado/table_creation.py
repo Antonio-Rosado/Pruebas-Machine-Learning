@@ -1,5 +1,7 @@
 from grid_search import *
 from pytorch import get_mse_mae_all
+from preprocessing import feature_engineering
+from tranfer_learning import apply_tranfer_learning
 
 
 def obtain_results_tables(data, config, outputname,fe, result_name,hour_week_data):
@@ -48,15 +50,22 @@ def obtain_results_tables_tsfresh(data, config, outputname, result_name,lags,hou
     print(df1)
     df1.to_excel("output/" + result_name + "_resultados_tsfresh.xlsx")
 
-def get_table_pytorch_plus (dataset, test_start, filename):
+def get_table_pytorch_plus (dataset, test_start,test_transfer, filename):
 
     results = []
+    results_tf = []
+    best_models = {}
+    df_transfer = dataset.loc[:test_transfer].copy()
+
     for i in range(0, len(dataset.columns)):
         data = dataset.iloc[:, i]
         outputname = data.name
         data = data.to_frame()
         print(data.to_string())
+        print(data.index)
+        feature_engineering(data,outputname)
         data[outputname + '2'] = data[outputname]
+
 
         forecast_lead = 30
         target = f"{outputname}_lead{forecast_lead}"
@@ -65,15 +74,41 @@ def get_table_pytorch_plus (dataset, test_start, filename):
 
         data[target] = data[outputname].shift(-forecast_lead)
         data = data.iloc[:-forecast_lead]
-        test_start = "2015-04-04"
 
-        results = get_mse_mae_all(data, forecast_lead, target, features, test_start, outputname, 6, 6, results)
+        results,best_models = get_mse_mae_all(data, forecast_lead, target, features, test_start, outputname, results,best_models)
+
+    print(best_models)
+
+    for i in range(0, len(df_transfer.columns)):
+        data = df_transfer.iloc[:, i]
+        outputname = data.name
+        data = data.to_frame()
+        feature_engineering(data, outputname)
+        data[outputname + '2'] = data[outputname]
+        forecast_lead = 30
+        target = f"{outputname}_lead{forecast_lead}"
+        features = list(data.columns.difference([outputname]))
+        data[target] = data[outputname].shift(-forecast_lead)
+        data = data.iloc[:-forecast_lead]
+        results_tf = apply_tranfer_learning(best_models, data, 6, 6, target, features,outputname, results_tf)
 
     columns = ['time_series', 'CNN_mse', 'CNN_mae', 'LSTM_mse','LSTM_mae','Transformer_mse','Transformer_mae','XGB_mse','XGB_mae','RandomForest_mse','RandomForest_mae']
     df1 = pd.DataFrame(results, columns=columns)
     df1.set_index(['time_series'], inplace=True)
     print(df1)
+
     df1.to_excel("output/" + filename + ".xlsx")
+
+    columns_tf = ['series']
+    for k in best_models.keys():
+        columns_tf.append(k)
+    print(columns_tf)
+    print(results_tf)
+    df2 = pd.DataFrame(results_tf, columns=columns_tf)
+    df2.set_index(['series'], inplace=True)
+    print(df2)
+
+    df2.to_excel("output/" + filename + "transfer_learning.xlsx")
 
 
 

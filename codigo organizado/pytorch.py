@@ -211,6 +211,7 @@ def pytorch_neural_network(data,forecast_lead,target,features,test_start, output
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    print(test_loader)
 
     X, y = next(iter(train_loader))
 
@@ -257,7 +258,7 @@ def pytorch_neural_network(data,forecast_lead,target,features,test_start, output
 
     print(mae)
 
-    return mse, mae
+    return mse, mae, model
 
 def select_network(nn_type, features):
     if (nn_type == 'transformer'):
@@ -276,9 +277,9 @@ def select_network(nn_type, features):
     return model
 
 
-def mse_basic(data,outputname,lags,steps,modelname):
-    formatted_data = window_input_output(lags, steps, data, outputname)
-    X_train, y_train, X_test_final, y_test_final = split_train_test(formatted_data,outputname)
+def mse_basic(data,features, target,modelname,test_start):
+
+    X_train, y_train, X_test_final, y_test_final = split_train_test_at_point(data,test_start, features, target)
     model = select_model(modelname)
     model.fit(X_train,y_train)
     predictions_final = model.predict(X_test_final)
@@ -286,15 +287,30 @@ def mse_basic(data,outputname,lags,steps,modelname):
     mae = mean_absolute_error(y_test_final, predictions_final)
     print(mse)
     print(mae)
-    return mse, mae
+    return mse, mae, model
 
-def get_mse_mae_all(data, forecast_lead, target, features, test_start, outputname, lags, steps, results):
+def get_mse_mae_all(data, forecast_lead, target, features, test_start, outputname, results, best_models):
 
-    mse1,mae1 = pytorch_neural_network(data, forecast_lead, target, features, test_start, outputname, 1, 3, 'cnn')
-    mse2,mae2 = pytorch_neural_network(data, forecast_lead, target, features, test_start, outputname, 4, 30, 'lstm')
-    mse3,mae3 = pytorch_neural_network(data, forecast_lead, target, features, test_start, outputname, 1, 6, 'transformer')
-    mse4,mae4 = mse_basic(data, outputname, lags, steps, 'xgb')
-    mse5,mae5 = mse_basic(data, outputname, lags, steps, 'forest')
+    mse1,mae1, model1 = pytorch_neural_network(data, forecast_lead, target, features, test_start, outputname, 1, 3, 'cnn')
+    best_model = model1
+    best_mse = mse1
+    mse2,mae2, model2 = pytorch_neural_network(data, forecast_lead, target, features, test_start, outputname, 4, 30, 'lstm')
+    if (mse2<mse1):
+        best_model = model2
+        best_mse = mse2
+    mse3,mae3, model3 = pytorch_neural_network(data, forecast_lead, target, features, test_start, outputname, 1, 6, 'transformer')
+    if (mse3<mse1 and mse3<mse2):
+        best_model = model3
+        best_mse = mse3
+    mse4,mae4, model4 = mse_basic(data, features, target, 'xgb',test_start)
+    if (mse4<mse1 and mse4<mse2 and mse4<mse3):
+        best_model = model4
+        best_mse = mse4
+    mse5,mae5, model5 = mse_basic(data, features, target, 'forest',test_start)
+    if (mse5 < mse1 and mse5 < mse2 and mse5 < mse3 and mse5<mse4):
+        best_model = model5
+        best_mse = mse5
+
 
     print('CNN:')
     print('mae: ' + str(mae1) + ' mse: ' + str(mse1) )
@@ -307,6 +323,6 @@ def get_mse_mae_all(data, forecast_lead, target, features, test_start, outputnam
     print('RandomForest:')
     print('mae: ' + str(mae5)  + ' mse: ' + str(mse5) )
 
-
-    results.append(([outputname, mse1, mae1, mse2, mae2, mse3, mae3, mse4, mae4, mse5, mae5]))
-    return results
+    results.append([outputname, mse1, mae1, mse2, mae2, mse3, mae3, mse4, mae4, mse5, mae5])
+    best_models.update({outputname:[best_model,best_mse]})
+    return results,best_models
