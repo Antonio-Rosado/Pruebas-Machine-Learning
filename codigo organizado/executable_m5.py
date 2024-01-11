@@ -47,7 +47,7 @@ train_sales_cal_df_total = train_sales_cal_df_total.reset_index()
 #train_sales_cal_df_total = train_sales_cal_df_total.set_index('date')
 #print(train_sales_cal_df_total)
 #print(train_sales_cal_df.iloc[:,30490])
-df = select_data_fragment(train_sales_cal_df,0,3)
+df = select_data_fragment(train_sales_cal_df,0,5)
 for col in df.columns:
     df[col].plot()
     plt.title(col)
