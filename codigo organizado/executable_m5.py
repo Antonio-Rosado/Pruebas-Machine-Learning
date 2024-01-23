@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from ydata_profiling import ProfileReport
 from ydata_profiling.utils.cache import cache_file
 from ydata_profiling.visualisation.plot import timeseries_heatmap
-from table_creation import get_table_pytorch_plus
+from table_creation import transfer_learning_analysis
 from preprocessing import select_data_fragment
 
 
@@ -47,19 +47,15 @@ train_sales_cal_df_total = train_sales_cal_df_total.reset_index()
 #train_sales_cal_df_total = train_sales_cal_df_total.set_index('date')
 #print(train_sales_cal_df_total)
 #print(train_sales_cal_df.iloc[:,30490])
-df = select_data_fragment(train_sales_cal_df,0,5)
-for col in df.columns:
-    df[col].plot()
-    plt.title(col)
-    plt.show()
-print(df)
 
 
-dataset = train_sales_cal_df
+a=30400
+b=30405
+
 test_start = "2014-04-04"
 test_transfer = "2016-04-04"
-filename = 'resultados_m5_2'
-get_table_pytorch_plus (df, test_start, test_transfer,filename)
+filename = 'resultados_m5_fragmento_-17'
+transfer_learning_analysis(train_sales_cal_df,a,b,test_start,test_transfer,filename)
 
 
 

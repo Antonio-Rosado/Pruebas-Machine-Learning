@@ -75,7 +75,7 @@ def get_table_pytorch_plus (dataset, test_start,test_transfer, filename):
         data[target] = data[outputname].shift(-forecast_lead)
         data = data.iloc[:-forecast_lead]
 
-        results,best_models = get_mse_mae_all(data, forecast_lead, target, features, test_start, outputname, results,best_models)
+        results,best_models = get_mse_mae_all(data, target, features, test_start, outputname, results,best_models)
 
     print(best_models)
 
@@ -114,3 +114,13 @@ def get_table_pytorch_plus (dataset, test_start,test_transfer, filename):
 
 
 
+def transfer_learning_analysis(dataframe,data_start,data_end,test_start,test_transfer,filename):
+
+    df = select_data_fragment(dataframe, data_start, data_end)
+    for col in df.columns:
+        df[col].plot()
+        plt.title(col)
+        plt.show()
+    print(df)
+
+    get_table_pytorch_plus(df, test_start, test_transfer, filename)

@@ -175,7 +175,7 @@ def predict(data_loader, model):
 
 
 
-def pytorch_neural_network(data,forecast_lead,target,features,test_start, outputname, batch_size, sequence_length, n_type):
+def pytorch_neural_network(data,target,features,test_start, outputname, batch_size, sequence_length, n_type):
     df_train = data.loc[:test_start].copy()
     df_test = data.loc[test_start:].copy()
     print(df_train)
@@ -289,16 +289,16 @@ def mse_basic(data,features, target,modelname,test_start):
     print(mae)
     return mse, mae, model
 
-def get_mse_mae_all(data, forecast_lead, target, features, test_start, outputname, results, best_models):
+def get_mse_mae_all(data, target, features, test_start, outputname, results, best_models):
 
-    mse1,mae1, model1 = pytorch_neural_network(data, forecast_lead, target, features, test_start, outputname, 1, 3, 'cnn')
+    mse1,mae1, model1 = pytorch_neural_network(data, target, features, test_start, outputname, 1, 3, 'cnn')
     best_model = model1
     best_mse = mse1
-    mse2,mae2, model2 = pytorch_neural_network(data, forecast_lead, target, features, test_start, outputname, 4, 30, 'lstm')
+    mse2,mae2, model2 = pytorch_neural_network(data, target, features, test_start, outputname, 4, 30, 'lstm')
     if (mse2<mse1):
         best_model = model2
         best_mse = mse2
-    mse3,mae3, model3 = pytorch_neural_network(data, forecast_lead, target, features, test_start, outputname, 1, 6, 'transformer')
+    mse3,mae3, model3 = pytorch_neural_network(data, target, features, test_start, outputname, 1, 6, 'transformer')
     if (mse3<mse1 and mse3<mse2):
         best_model = model3
         best_mse = mse3

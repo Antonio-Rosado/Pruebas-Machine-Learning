@@ -69,7 +69,8 @@ def apply_tranfer_learning(models, df_test, batch_size,sequence_length, target, 
             print(y_test)
             predictions = model.predict(X_test)
             mse = mean_squared_error(y_test, predictions)
-            print(mse)
+            print('MSE without tansfer:' + str(old_mse))
+            print('MSE with tansfer:' + str(mse))
 
 
         mselist.append(mse)
