@@ -1,1 +1,1 @@
-![](LOGO COLOR.png?raw=true)
+![](logo.png?raw=true)
