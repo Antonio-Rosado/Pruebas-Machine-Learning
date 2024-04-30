@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const ROOT_DIR = './Portrait Repository/FE10 Mugs (Radiant Dawn)/';
+const ROOT_DIR = './Antonio-Rosado/Pruebas-Machine-Learning/';
 const README_FILENAME = 'README.md';
 const NB_IMAGES_PER_LINE = 4;
 let nbImages = 0;
