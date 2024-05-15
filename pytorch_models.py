@@ -1,5 +1,5 @@
 import math
-from ancillary_functions import save_model
+from ancillary_functions import save_model, split_train_test_at_point
 import torch
 import pandas as pd
 from torch.utils.data import Dataset
@@ -7,18 +7,20 @@ from torch.utils.data import DataLoader
 from torch import nn, Tensor
 from torch.nn import TransformerEncoder, TransformerEncoderLayer
 from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, mean_squared_error
-
-
+from skorch import NeuralNetRegressor, NeuralNet
+from sklearn_models import skorch_model
 
 
 
 class SequenceDataset(Dataset):
-    def __init__(self, dataframe, target, features, sequence_length=5):
+    def __init__(self, dataframe, target, features, sequence_length=5, **kwargs):
         self.features = features
         self.target = target
         self.sequence_length = sequence_length
-        self.y = torch.tensor(dataframe[target].values).float()
+        print('here')
+        print(dataframe[target])
         print(dataframe[features])
+        self.y = torch.tensor(dataframe[target].values).float()
         self.X = torch.tensor(dataframe[features].values).float()
 
     def __len__(self):
@@ -68,7 +70,7 @@ class CNN_ForecastNet(nn.Module):
         super(CNN_ForecastNet, self).__init__()
         self.conv1d = nn.Conv1d(3, 64, kernel_size=1)
         self.relu = nn.ReLU(inplace=True)
-        self.fc1 = nn.Linear(704, 50)
+        self.fc1 = nn.Linear(768, 50)
         self.fc2 = nn.Linear(50, 1)
 
     def forward(self, x):
@@ -180,7 +182,7 @@ def predict(data_loader, model):
 
 
 
-def pytorch_neural_network(data,target,features,test_start,validation_start, outputname, batch_size, sequence_length, n_type):
+def pytorch_neural_network(data,target,features,test_start,validation_start, outputname, batch_size, sequence_length, n_type, epochs):
     df_train = data[data['d'] < test_start].copy()
     df_t = data[data['d'] >= test_start].copy()
     df_test = df_t[df_t['d'] < validation_start].copy()
@@ -246,7 +248,7 @@ def pytorch_neural_network(data,target,features,test_start,validation_start, out
     test_model(test_loader, model, loss_function)
     print()
 
-    for ix_epoch in range(50):
+    for ix_epoch in range(epochs):
         print(f"Epoch {ix_epoch}\n---------")
         train_model(train_loader, model, loss_function, optimizer=optimizer)
         test_model(test_loader, model, loss_function)
@@ -382,4 +384,77 @@ def compare_models_pytorch(df_transfer,features,test_start,validation_start, out
     return mse1, mse2, mae1, mae2
 
 
+def skorch_neural_network(data,target,features,test_start,validation_start, outputname, batch_size, sequence_length, n_type):
 
+    df_train = data[data['d'] < test_start].copy()
+    df_t = data[data['d'] >= test_start].copy()
+    df_test = df_t[df_t['d'] < validation_start].copy()
+    df_val = df_t[df_t['d'] >= validation_start].copy()
+
+
+    train_dataset = SequenceDataset(
+        df_train,
+        target=target,
+        features=features,
+        sequence_length=sequence_length
+    )
+
+    test_dataset = SequenceDataset(
+        df_test,
+        target=target,
+        features=features,
+        sequence_length=sequence_length
+    )
+
+    val_dataset = SequenceDataset(
+        df_val,
+        target=target,
+        features=features,
+        sequence_length=sequence_length
+    )
+
+    torch.manual_seed(101)
+
+    batch_size = batch_size
+    sequence_length = sequence_length
+
+    learning_rate = 5e-5
+
+
+    model = select_network(n_type,features)
+    loss_function = nn.MSELoss()
+    optimizer = torch.optim.Adam
+
+    skmodel = NeuralNetRegressor(
+        module=model,
+        criterion=loss_function,
+        optimizer=optimizer,
+        lr=learning_rate,
+        max_epochs=5,
+        batch_size=batch_size
+    )
+
+    print(features)
+
+
+
+    skmodel.fit(train_dataset, None)
+
+    predictions = skmodel.predict(test_dataset)
+
+    print(predictions)
+
+    skorch_model(val_dataset,predictions,test_dataset.y,skmodel)
+
+    return skmodel, predictions, val_dataset
+
+
+
+def select_network_skorch(nn_type):
+    if (nn_type == 'transformer'):
+        model = Transformer
+    if (nn_type == 'lstm'):
+        model = ShallowRegressionLSTM
+    if(nn_type == 'cnn'):
+        model = CNN_ForecastNet
+    return model
