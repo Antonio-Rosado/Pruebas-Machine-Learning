@@ -6,31 +6,43 @@ from sklearn.multioutput import RegressorChain
 import xgboost as xgb
 import lightgbm as lgb
 from sklearn.neural_network import MLPRegressor
-from adapt.feature_based import CORAL
-from adapt.instance_based import TrAdaBoostR2
-from adapt.parameter_based import RegularTransferNN
+from adapt.feature_based import CORAL, PRED
+from adapt.instance_based import TrAdaBoostR2, LDM
+from adapt.parameter_based import RegularTransferNN, RegularTransferLR
+from adapt.parameter_based import FineTuning
 
 
 
 
 
 
-def adapt_model(X_train1, y_train1,X_train2, y_train2, X_test_final2, y_test_final2, modelname,loaded_model):
+def adapt_model(X_train1, y_train1,X_train2, y_train2, X_test_final2, y_test_final2, modelname,loaded_model,model_type):
 
-    model = fit_model(modelname,loaded_model,X_train1, y_train1, X_train2,y_train2)
+    model = fit_model(modelname,loaded_model,X_train1, y_train1, X_train2,y_train2, model_type)
 
-    predictions_final = model.predict(X_test_final2)
-    mse = mean_squared_error(y_test_final2, predictions_final)
-    mae = mean_absolute_error(y_test_final2, predictions_final)
+    predictions = model.predict(X_test_final2)
+    if(model_type == 'tf'):
+        predictions = predictions.reshape((predictions.shape[0], predictions.shape[1]))
+
+    mse = mean_squared_error(y_test_final2, predictions)
+    mae = mean_absolute_error(y_test_final2, predictions)
     print('mse:' + str(mse))
     print('mae:' + str(mae))
     return mse, mae, model
 
-def fit_model(model_name, given_model,X_train1, y_train1, X_train2,y_train2):
+def fit_model(model_name, given_model,X_train1, y_train1, X_train2,y_train2,model_type):
     if (model_name=='coral'):
-        model = CORAL(given_model, lambda_=1e-3, random_state=0)
-        model.fit(X_train1, y_train1, X_train2)
+        #model = CORAL(given_model, Xt=X_train2, lambda_=1, random_state=0,metrics=["acc"])
+        model = PRED(given_model, Xt=X_train2, yt=y_train2,pretrain=True, verbose=0, random_state=0)
+        model.fit(X_train1, y_train1)
     if (model_name == 'r2'):
-        model = TrAdaBoostR2(given_model, n_estimators=30, random_state=0)
-        model.fit(X_train1, y_train1, X_train2, y_train2)
+        #model = TrAdaBoostR2(given_model,Xt=X_train2, yt=y_train2, n_estimators=10, random_state=0)
+        model = LDM(given_model, Xt=X_train2, random_state=0)
+        model.fit(X_train1, y_train1)
+    if (model_name == 'rt'):
+        if(model_type=='tf'):
+            model = RegularTransferNN(given_model, loss="mse", lambdas=1., random_state=0)
+        if(model_type == 'sk'):
+            model = CORAL(given_model, Xt=X_train2, random_state=0)
+        model.fit(X_train2, y_train2)
     return model
