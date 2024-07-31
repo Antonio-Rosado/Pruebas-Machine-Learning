@@ -6,8 +6,8 @@ from sklearn.multioutput import RegressorChain
 import xgboost as xgb
 import lightgbm as lgb
 from sklearn.neural_network import MLPRegressor
-from adapt.feature_based import CORAL, PRED
-from adapt.instance_based import TrAdaBoostR2, LDM
+from adapt.feature_based import CORAL, PRED, SA, FA, TCA, DANN, fMMD
+from adapt.instance_based import TrAdaBoostR2, LDM, NearestNeighborsWeighting, BalancedWeighting
 from adapt.parameter_based import RegularTransferNN, RegularTransferLR
 from adapt.parameter_based import FineTuning
 
@@ -32,8 +32,22 @@ def adapt_model(X_train1, y_train1,X_train2, y_train2, X_test_final2, y_test_fin
 
 def fit_model(model_name, given_model,X_train1, y_train1, X_train2,y_train2,model_type):
     if (model_name=='coral'):
-        #model = CORAL(given_model, Xt=X_train2, lambda_=1, random_state=0,metrics=["acc"])
-        model = PRED(given_model, Xt=X_train2, yt=y_train2,pretrain=True, verbose=0, random_state=0)
+        model = CORAL(given_model, Xt=X_train2, random_state=0)
+        model.fit(X_train1, y_train1)
+    if (model_name=='nnw'):
+        model = NearestNeighborsWeighting(given_model, Xt=X_train2, n_neighbors=5,random_state=0)
+        model.fit(X_train1, y_train1)
+    if (model_name=='sa'):
+        model = SA(given_model, Xt=X_train2, random_state=0)
+        model.fit(X_train1, y_train1)
+    if (model_name=='ldm'):
+        model = LDM(given_model, Xt=X_train2, random_state=0)
+        model.fit(X_train1, y_train1)
+    if (model_name=='bw'):
+        model = BalancedWeighting(given_model, Xt=X_train2, yt=y_train2,gamma=0.5, random_state=0)
+        model.fit(X_train1, y_train1)
+    if (model_name=='fa'):
+        model = FA(given_model, Xt=X_train2,yt=y_train2, random_state=0)
         model.fit(X_train1, y_train1)
     if (model_name == 'r2'):
         #model = TrAdaBoostR2(given_model,Xt=X_train2, yt=y_train2, n_estimators=10, random_state=0)

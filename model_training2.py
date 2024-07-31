@@ -36,6 +36,15 @@ data_model2 = df[df['id'].isin(idlist)].copy()
 
 results=[]
 
+'''
+model_file = 'models/cnn_one_item_400_2.keras'
+st = time.time()
+mse, mae, model,mape = create_model_tensorflow(data_model, test_start, validation_start, features, 4, 30, 'cnn', model_file,target, 50)
+et = time.time()
+train_time = et - st
+results.append(['CNN_1', mse, mae, mape, train_time])
+'''
+
 model_file = 'models/xgb_one_item_400_2.pickle'
 st = time.time()
 mse, mae, model, mape = create_model_sklearn(data_model, test_start,validation_start, 'Sales', features,'xgb', model_file,target)
@@ -52,8 +61,6 @@ train_time = et - st
 results.append(['LSTM_1', mse, mae, mape, train_time])
 
 
-
-
 model_file = 'models/forest_one_item_400_2.pickle'
 st = time.time()
 mse, mae, model, mape = create_model_sklearn(data_model, test_start,validation_start, 'Sales', features,'forest', model_file,target)
@@ -61,13 +68,21 @@ et = time.time()
 train_time = et - st
 results.append(['FOREST_1', mse, mae, mape, train_time])
 
+'''
+model_file = 'models/cnn_many_item_400_2.keras'
+st = time.time()
+mse, mae, model,mape = create_model_tensorflow(data_model2, test_start, validation_start, features, 4, 30, 'cnn', model_file,target, 50)
+et = time.time()
+train_time = et - st
+results.append(['CNN_MANY', mse, mae, mape, train_time])
+'''
 
 model_file = 'models/xgb_many_item_400_2.pickle'
 st = time.time()
 mse, mae, model, mape = create_model_sklearn(data_model2, test_start,validation_start, 'Sales', features,'xgb', model_file,target)
 et = time.time()
 train_time = et - st
-results.append(['XGB_1', mse, mae, mape, train_time])
+results.append(['XGB_MANY', mse, mae, mape, train_time])
 
 
 model_file = 'models/lstm_many_item_400_2.keras'
@@ -75,7 +90,7 @@ st = time.time()
 mse, mae, model,mape = create_model_tensorflow(data_model2, test_start, validation_start, features, 4, 30, 'lstm', model_file,target, 50)
 et = time.time()
 train_time = et - st
-results.append(['LSTM_1', mse, mae, mape, train_time])
+results.append(['LSTM_MANY', mse, mae, mape, train_time])
 
 
 model_file = 'models/forest_many_item_400_2.pickle'
@@ -83,7 +98,7 @@ st = time.time()
 mse, mae, model, mape = create_model_sklearn(data_model2, test_start,validation_start, 'Sales', features,'forest', model_file,target)
 et = time.time()
 train_time = et - st
-results.append(['FOREST_1', mse, mae, mape, train_time])
+results.append(['FOREST_MANY', mse, mae, mape, train_time])
 
 
 

@@ -8,7 +8,7 @@ from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import Sequential
 from adapt.feature_based import CORAL
 from adapt.parameter_based import FineTuning
-from tensorflow.keras.layers import LSTM, Dense
+from tensorflow.keras.layers import LSTM, Dense, Conv1D, Flatten, MaxPooling2D, Reshape
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 from torch import nn, Tensor
@@ -48,10 +48,18 @@ def tensorflow_neural_network(df_train,df_test,target,features, batch_size, sequ
 
     X_test, y_test = create_sequences(df_test, features, target, sequence_length)
 
-    model = select_network(n_type,X_train)
+    X_test = X_test.reshape(X_test.shape[0], X_test.shape[1] * X_test.shape[2])
+
+    ogshape = X_train.shape
+
+    X_train = X_train.reshape(X_train.shape[0], X_train.shape[1]* X_train.shape[2])
+
+    model = select_network(n_type,X_train, ogshape)
 
     model.compile(loss='mean_squared_error', optimizer='adam')
-    y_train = y_train.reshape((y_train.shape[0], y_train.shape[1], 1))
+    y_train = y_train.reshape((y_train.shape[0], y_train.shape[1]))
+    print(y_train.shape)
+    print(X_train.shape)
     model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size, verbose=2)
     predictions = model.predict(X_test)
     predictions = predictions.reshape((predictions.shape[0], predictions.shape[1]))
@@ -67,14 +75,20 @@ def tensorflow_neural_network(df_train,df_test,target,features, batch_size, sequ
     return mse, mae, model, mape
 
 
-def select_network(nn_type, X_train):
+def select_network(nn_type, X_train, ogshape):
     if (nn_type == 'lstm'):
         model = Sequential()
-        model.add(LSTM(units=32, return_sequences=True, input_shape=(X_train.shape[1], X_train.shape[2])))
-        model.add(LSTM(units=16, return_sequences=True))
+        model.add(Reshape((ogshape[1], ogshape[2])))
+        model.add(LSTM(units=32, return_sequences=True, input_shape=(ogshape[1], ogshape[2])))
+        model.add(LSTM(units=32, return_sequences=True))
         model.add(LSTM(units=16, return_sequences=True))
         model.add(Dense(units=1))
 
+    if (nn_type == 'cnn'):
+        model = Sequential()
+        model.add(Conv1D(64, 1, activation='relu', input_shape=(X_train.shape[1], X_train.shape[2])))
+        model.add(Dense(32, activation='relu'))
+        model.add(Dense(1))
     return model
 
 
